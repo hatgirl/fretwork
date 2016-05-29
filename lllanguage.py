@@ -1,5 +1,7 @@
+import spacy
 import numpy as np
 import math
+import codecs
 
 # LLL algo
 
@@ -55,10 +57,7 @@ def lll_reduction( basis ):
    i = 1
    while(i < dim):
       for j in range(i-1, -1, -1):
-	 print "i = " + str(i)
-         print "j = " + str(j)
          mu_ij = np.dot(basis[i], ortho_basis[j]) / np.dot(ortho_basis[j], ortho_basis[j]) 
-	 print mu_ij
       	 if (mu_ij < -0.5 or mu_ij > 0.5):
             basis[i] -= round(mu_ij)*basis[j]
             ortho_basis = gram_schmidt(basis)
@@ -70,7 +69,7 @@ def lll_reduction( basis ):
          t = basis[i]
          basis[i] = basis[i-1]
          basis[i-1] = t
-         ortho_basis = grad_schmidt(basis)
+         ortho_basis = gram_schmidt(basis)
          i = max(i-1, 1)
 
    return basis
@@ -80,4 +79,18 @@ y = np.array([1.0, 1.0, 0.0])
 z = np.array([1.0, 1.0, 1.0])
 print lll_reduction([x, y, z])
 
+x = np.array([1, 1, 1])
+y = np.array([-1, 0, 2])
+z = np.array([3, 5, 6])
+
+print lll_reduction([x, y, z])
+
+nlp = spacy.load('en')
+text = codecs.open('test.txt', encoding='utf-8').read()
+doc = nlp(text)
+
+vectors = [word.repvec for word in doc]
+print len(vectors)
+reduction = lll_reduction(vectors)
+print reduction
 
