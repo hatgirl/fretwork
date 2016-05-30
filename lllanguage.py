@@ -3,13 +3,13 @@ import numpy as np
 import math
 import codecs
 
-# LLL algo
+nlp = spacy.load('en')
 
 # Gram-Schmidt orthogonalization is a subroutine
 def gram_schmidt( basis ):
 
    # remove all 0 vectors from the set
-   basis = [vector for vector in basis if vector != nlp(u' ').vector] 	
+   basis = [vec for vec in basis if not np.array_equal(vec, nlp(u' ').vector)] 	
    
    # if underspecified, don't bother
    if (len(basis) < len(basis[0])):
@@ -26,10 +26,6 @@ def gram_schmidt( basis ):
          for j in range(i):
             # project the current vector along the next vector in
             # the basis
-   	 print "Length of basis = " + str(len(basis))
-   	 print "Length of ortho_basis = " + str(len(ortho_basis))
-            print "j = " + str(j)
-   	 print "i = " + str(i)
             proj = np.dot(basis[i], ortho_basis[j])
             mag_sq =  np.dot(ortho_basis[j], ortho_basis[j])
             mu = proj / mag_sq
@@ -63,51 +59,55 @@ def lll_reduction( basis ):
    target_dim = len(nlp(u' ').vector)
    
    # remove all 0 vectors from basis set
-   basis = [vector for vector in basis if vector != nlp(u' ').vector] 	
+   basis = [vec for vec in basis if not np.array_equal(vec, nlp(u' ').vector)] 	
    
    if (len(basis) < target_dim):
       print "Need additional text to yield the 300 linearly independent vectors \
       needed to span the word2vec vectorspace"
-
    
-   # pick the first n vectors from the basis, where n = len(word2vec vectors)
-   lin_ind_basis = [basis[i] for i in range(target_dim)]
+   else:
+      # pick the first n vectors from the basis, where n = len(word2vec vectors)
+      lin_ind_basis = [basis[i] for i in range(target_dim)]
 
-   # add additional vectors to the linearly independent basis until we have a 
-   # spanning set
-   i = target_dim
-   num_vectors = len(basis)
-   num_lin_ind_vectors = len(gram_schmidt(lin_ind_basis))
-   while (num_lin_ind_vectors < target_dim and i < num_vectors):
-      
-      new_span = len(gram_schmidt(lin_ind_basis+[basis[i]]))
-      if ( new_span > num_lin_ind_vectors ):
-         num_lin_ind_vectors = new_span
-         lin_ind_basis.append(basis[i])
+      # add additional vectors to the linearly independent basis until we have a 
+      # spanning set
+      i = target_dim
+      num_vectors = len(basis)
+      num_lin_ind_vectors = len(gram_schmidt(lin_ind_basis))
+      while (num_lin_ind_vectors < target_dim and i < num_vectors):
+         
+         new_span = len(gram_schmidt(lin_ind_basis+[basis[i]]))
+         if ( new_span > num_lin_ind_vectors ):
+            num_lin_ind_vectors = new_span
+            lin_ind_basis.append(basis[i])
+         i+=1
 
-      i++
-
-   delta = 0.75 
-   ortho_basis = gram_schmidt(basis)
-   dim = len(ortho_basis)
-
-   i = 1
-   while(i < dim):
-      for j in range(i-1, -1, -1):
-         mu_ij = np.dot(basis[i], ortho_basis[j]) / np.dot(ortho_basis[j], ortho_basis[j]) 
-      	 if (mu_ij < -0.5 or mu_ij > 0.5):
-            basis[i] -= round(mu_ij)*basis[j]
-            ortho_basis = gram_schmidt(basis)
-
-      mu_ii_1 = np.dot(basis[i], ortho_basis[i-1]) / np.dot(ortho_basis[i-1], ortho_basis[i-1])
-      if (np.dot(ortho_basis[i], ortho_basis[i]) >= (delta - mu_ii_1**2)*(np.dot(ortho_basis[i-1], ortho_basis[i-1]))):
-         i = i+1
-      else:
-         t = basis[i]
-         basis[i] = basis[i-1]
-         basis[i-1] = t
+      # did we get enough or did we run out of the provided vectors first?
+      if (num_lin_ind_vectors < target_dim):
+         print "Need additional text to yield the 300 linearly independent vectors \
+         needed to span the word2vec vectorspace"
+      else:      
+         delta = 0.75 
          ortho_basis = gram_schmidt(basis)
-         i = max(i-1, 1)
+         dim = len(ortho_basis)
+
+         i = 1
+         while(i < dim):
+            for j in range(i-1, -1, -1):
+               mu_ij = np.dot(basis[i], ortho_basis[j]) / np.dot(ortho_basis[j], ortho_basis[j]) 
+               if (mu_ij < -0.5 or mu_ij > 0.5):
+                  basis[i] -= round(mu_ij)*basis[j]
+                  ortho_basis = gram_schmidt(basis)
+
+            mu_ii_1 = np.dot(basis[i], ortho_basis[i-1]) / np.dot(ortho_basis[i-1], ortho_basis[i-1])
+            if (np.dot(ortho_basis[i], ortho_basis[i]) >= (delta - mu_ii_1**2)*(np.dot(ortho_basis[i-1], ortho_basis[i-1]))):
+               i = i+1
+            else:
+               t = basis[i]
+               basis[i] = basis[i-1]
+               basis[i-1] = t
+               ortho_basis = gram_schmidt(basis)
+               i = max(i-1, 1)
 
    return basis
 
@@ -123,7 +123,6 @@ z = np.array([3, 5, 6])
 
 print lll_reduction([x, y, z])
 
-nlp = spacy.load('en')
 text = codecs.open('test.txt', encoding='utf-8').read()
 doc = nlp(text)
 #
@@ -132,5 +131,6 @@ print len(vectors)
 print "vectors[0] = " + str(vectors[0])
 ortho = gram_schmidt(vectors)
 print len(ortho)
-#print reduction
+reduction = lll_reduction(vectors)
+print len(reduction)
 
